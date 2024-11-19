@@ -35,10 +35,10 @@ class Reader(io.Reader):
     def __attrs_post_init__(self):
         """Define _kwargs, open dataset and get info."""
         dataset = self._ctx_stack.enter_context(rasterio.open(self.input))
-
+        isGeoreferenced = dataset.crs is not None
         # when external GCPS we create a VRT
         if self.gcps:
-            vrt_xml = vrt_doc(dataset, gcps=self.gcps, gcps_crs=self.gcps_crs)
+            vrt_xml = vrt_doc(dataset, gcps=self.gcps, gcps_crs=self.gcps_crs, isGeoreferenced=isGeoreferenced)
             dataset = self._ctx_stack.enter_context(rasterio.open(vrt_xml))
 
         vrt_options = {}
@@ -98,6 +98,7 @@ def vrt_doc(  # noqa: C901
     src_dataset,
     gcps: Optional[List[GroundControlPoint]] = None,
     gcps_crs: Optional[CRS] = WGS84_CRS,
+    isGeoreferenced: bool = False,
 ):
     """Make a VRT XML document.
 
@@ -128,8 +129,11 @@ def vrt_doc(  # noqa: C901
     if src_dataset.crs:
         srs = ET.SubElement(vrtdataset, "SRS")
         srs.text = src_dataset.crs.wkt if src_dataset.crs else ""
-        geotransform = ET.SubElement(vrtdataset, "GeoTransform")
-        geotransform.text = ",".join([str(v) for v in src_dataset.transform.to_gdal()])
+        # If the image is already georeferenced the transform is incorrect for the new
+        # GCPs, and will throw off the new georeferencing.
+        if(not isGeoreferenced):
+            geotransform = ET.SubElement(vrtdataset, "GeoTransform")
+            geotransform.text = ",".join([str(v) for v in src_dataset.transform.to_gdal()])
 
     nodata_value = src_dataset.nodata
 
