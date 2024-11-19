@@ -26,6 +26,8 @@
 
 `TiTiler.image` is a [titiler](https://github.com/developmentseed/titiler) extension to work with non-geo images.
 
+This fork has been slightly modified to support applying new GCPs to already georeferenced images.
+
 ## Installation
 
 To install from PyPI and run:
