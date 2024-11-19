@@ -3,7 +3,6 @@ import warnings
 
 from fastapi import FastAPI, Query
 from fastapi.exceptions import RequestValidationError
-import rasterio
 from rasterio.errors import NotGeoreferencedWarning, RasterioIOError
 from starlette import status
 from starlette.middleware.cors import CORSMiddleware
@@ -11,15 +10,15 @@ from starlette_cramjam.middleware import CompressionMiddleware
 
 from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from titiler.core.middleware import CacheControlMiddleware
+from titiler.core.factory import TilerFactory
 from titiler.image import __version__ as titiler_image_version
 from titiler.image.factory import (
-    GeoTilerFactory,
     IIIFFactory,
     LocalTilerFactory,
     MetadataFactory,
 )
 from titiler.image.settings import api_settings
-from titiler.image.dependencies import DatasetParams, GCPSParams
+from titiler.image.dependencies import GCPSParams
 from titiler.image.reader import Reader
 from pyproj import Transformer
 from rasterio.control import GroundControlPoint
@@ -89,8 +88,10 @@ app.include_router(iiif.router, tags=["IIIF"], prefix="/iiif")
 image_tiles = LocalTilerFactory(router_prefix="/image")
 app.include_router(image_tiles.router, tags=["Local Tiles"], prefix="/image")
 
-geo_tiles = GeoTilerFactory(
-    reader=Reader, reader_dependency=GCPSParams, router_prefix="/geo"
+geo_tiles = TilerFactory(
+    reader=Reader,
+    reader_dependency=GCPSParams,
+    router_prefix="/geo"
 )
 app.include_router(geo_tiles.router, tags=["Geo Tiles"], prefix="/geo")
 
