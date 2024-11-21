@@ -22,6 +22,7 @@ from titiler.image.dependencies import GCPSParams
 from titiler.image.reader import Reader
 from pyproj import Transformer
 from rasterio.control import GroundControlPoint
+from rasterio.transform import GCPTransformer
 from typing import Annotated
 
 app = FastAPI(
@@ -100,28 +101,24 @@ def parse_gcps(gcps: str) -> list[GroundControlPoint]:
                 GroundControlPoint(*list(map(float, gcps.split(","))))
                 for gcps in gcps
             ]
+    return gcps
 
 @app.get("/latlng_to_pixel")
-def latlng_to_pixel(url: str, latitude: float, longitude: float, gcps: Annotated[list[str], 
+def latlng_to_pixel(latitude: float, longitude: float, gcps: Annotated[list[str], 
     Query(title="Ground Control Points", description="Ground Control Points in form of `row (y), col (x), lon, lat, alt`")]):
     gcpList = parse_gcps(gcps)
-    with Reader(url, gcps=gcpList) as reader:
-        dataset = reader.dataset
-        transformer = Transformer.from_crs("EPSG:4326", dataset.crs.to_string())
-        latM, lngM = transformer.transform(latitude, longitude)
-        py, px = dataset.index(latM, lngM)
-        return {"x": px, "y": py}
+    gcpTransformer = GCPTransformer(gcpList)
+    py, px = gcpTransformer.rowcol(longitude, latitude)
+    return {"x": px, "y": py}
+
     
 @app.get("/pixel_to_latlng")
-def pixel_to_latlng(url: str, x: float, y: float, gcps: Annotated[list[str], 
+def pixel_to_latlng(x: float, y: float, gcps: Annotated[list[str], 
     Query(title="Ground Control Points", description="Ground Control Points in form of `row (y), col (x), lon, lat, alt`")]):
     gcpList = parse_gcps(gcps)
-    with Reader(url, gcps=gcpList) as reader:
-        dataset = reader.dataset
-        transformer = Transformer.from_crs(dataset.crs.to_string(), "EPSG:4326")
-        lat, lng = dataset.xy(y, x)
-        latitude, longitude = transformer.transform(lat, lng)
-        return {"latitude": latitude, "longitude": longitude}
+    gcpTransformer = GCPTransformer(gcpList)
+    longitude, latitude = gcpTransformer.xy(y, x)
+    return {"latitude": latitude, "longitude": longitude}
 
 ###############################################################################
 # Health Check Endpoint
