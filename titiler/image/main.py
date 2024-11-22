@@ -109,7 +109,7 @@ def latlng_to_pixel(latitude: float, longitude: float, gcps: Annotated[list[str]
     gcpList = parse_gcps(gcps)
     gcpTransformer = GCPTransformer(gcpList)
     py, px = gcpTransformer.rowcol(longitude, latitude)
-    return {"x": px, "y": py}
+    return {"x": int(px), "y": int(py)}
 
     
 @app.get("/pixel_to_latlng")
